@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/dailymotion/hls.js.svg?branch=master)](https://travis-ci.org/dailymotion/hls.js)
-# hls.js
+# hls.js with Support for Multiple Fragment Streams
 hls.js is a JavaScript library which implements an [HTTP Live Streaming] client.
 It relies on [HTML5 video][] and [MediaSource Extensions][] for playback.
 
@@ -16,6 +16,9 @@ hls.js is written in [ECMAScript6], and transpiled in ECMAScript5 using [Babel].
 [Web Worker]: http://caniuse.com/#search=worker
 [ECMAScript6]: https://github.com/ericdouglas/ES6-Learning#articles--tutorials
 [Babel]: https://babeljs.io
+
+## Multiple Fragment Streams Support
+A tsStreamIndex configuration has been added to allow you to select which stream from the fragment that the player should extract and render. See the [API documentation](API.md) for more details.
 
 ## Demo
 

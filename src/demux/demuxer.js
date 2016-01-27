@@ -43,11 +43,13 @@ class Demuxer {
   }
 
   pushDecrypted(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration) {
+    var tsStreamIndex = this.hls.config.tsStreamIndex;
+
     if (this.w) {
       // post fragment payload as transferable objects (no copy)
-      this.w.postMessage({cmd: 'demux', data: data, audioCodec: audioCodec, videoCodec: videoCodec, timeOffset: timeOffset, cc: cc, level: level, sn : sn, duration: duration}, [data]);
+      this.w.postMessage({cmd: 'demux', data: data, audioCodec: audioCodec, videoCodec: videoCodec, timeOffset: timeOffset, cc: cc, level: level, sn : sn, duration: duration, tsStreamIndex: tsStreamIndex}, [data]);
     } else {
-      this.demuxer.push(new Uint8Array(data), audioCodec, videoCodec, timeOffset, cc, level, sn, duration);
+      this.demuxer.push(new Uint8Array(data), audioCodec, videoCodec, timeOffset, cc, level, sn, duration, tsStreamIndex);
     }
   }
 

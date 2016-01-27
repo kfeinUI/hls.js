@@ -3131,7 +3131,7 @@ var DemuxerInline = (function () {
     }
   }, {
     key: 'push',
-    value: function push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration) {
+    value: function push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration, tsStreamIndex) {
       var demuxer = this.demuxer;
       if (!demuxer) {
         // probe for content type
@@ -3144,7 +3144,7 @@ var DemuxerInline = (function () {
           return;
         }
       }
-      demuxer.push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration);
+      demuxer.push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration, tsStreamIndex);
     }
   }]);
 
@@ -3210,7 +3210,7 @@ var DemuxerWorker = function DemuxerWorker(self) {
         break;
       case 'demux':
         var data = ev.data;
-        self.demuxer.push(new Uint8Array(data.data), data.audioCodec, data.videoCodec, data.timeOffset, data.cc, data.level, data.sn, data.duration);
+        self.demuxer.push(new Uint8Array(data.data), data.audioCodec, data.videoCodec, data.timeOffset, data.cc, data.level, data.sn, data.duration, data.tsStreamIndex);
         break;
       default:
         break;
@@ -3343,11 +3343,13 @@ var Demuxer = (function () {
   }, {
     key: 'pushDecrypted',
     value: function pushDecrypted(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration) {
+      var tsStreamIndex = this.hls.config.tsStreamIndex;
+
       if (this.w) {
         // post fragment payload as transferable objects (no copy)
-        this.w.postMessage({ cmd: 'demux', data: data, audioCodec: audioCodec, videoCodec: videoCodec, timeOffset: timeOffset, cc: cc, level: level, sn: sn, duration: duration }, [data]);
+        this.w.postMessage({ cmd: 'demux', data: data, audioCodec: audioCodec, videoCodec: videoCodec, timeOffset: timeOffset, cc: cc, level: level, sn: sn, duration: duration, tsStreamIndex: tsStreamIndex }, [data]);
       } else {
-        this.demuxer.push(new Uint8Array(data), audioCodec, videoCodec, timeOffset, cc, level, sn, duration);
+        this.demuxer.push(new Uint8Array(data), audioCodec, videoCodec, timeOffset, cc, level, sn, duration, tsStreamIndex);
       }
     }
   }, {
@@ -4004,7 +4006,7 @@ var TSDemuxer = (function () {
     // feed incoming data to the front of the parsing pipeline
   }, {
     key: 'push',
-    value: function push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration) {
+    value: function push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration, tsStreamIndex) {
       var avcData,
           aacData,
           id3Data,
@@ -4100,7 +4102,7 @@ var TSDemuxer = (function () {
             if (pid === 0) {
               this._parsePAT(data, offset);
             } else if (pid === this._pmtId) {
-              this._parsePMT(data, offset);
+              this._parsePMT(data, offset, tsStreamIndex);
               pmtParsed = this.pmtParsed = true;
               avcId = this._avcTrack.id;
               aacId = this._aacTrack.id;
@@ -4142,10 +4144,21 @@ var TSDemuxer = (function () {
       this._pmtId = (data[offset + 10] & 0x1F) << 8 | data[offset + 11];
       //logger.log('PMT PID:'  + this._pmtId);
     }
+
+    /*
+     * Enhanced to parse out a given tsStreamIndex for the special case where a ts fragment may contain multiple streams.
+     * The out-of-the-box behavior assumed a single stream, so if there were multiple then it went with the last one found.
+     * Now it keeps count of the streams encountered and will extract only the one desired.
+     * This is done based on the tsStreamIndex configuration provided to the Hls instance upon construction. If not supplied, it defaults to 0.
+     */
   }, {
     key: '_parsePMT',
     value: function _parsePMT(data, offset) {
+      var tsStreamIndex = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
+
       var sectionLength, tableEnd, programInfoLength, pid;
+      var currentVideoStreamIndex = 0,
+          currentAudioStreamIndex = 0;
       sectionLength = (data[offset + 1] & 0x0f) << 8 | data[offset + 2];
       tableEnd = offset + 3 + sectionLength - 4;
       // to determine where the table is, we have to figure out how
@@ -4159,7 +4172,10 @@ var TSDemuxer = (function () {
           // ISO/IEC 13818-7 ADTS AAC (MPEG-2 lower bit-rate audio)
           case 0x0f:
             //logger.log('AAC PID:'  + pid);
-            this._aacTrack.id = pid;
+            if (currentAudioStreamIndex === tsStreamIndex) {
+              this._aacTrack.id = pid;
+            }
+            ++currentAudioStreamIndex;
             break;
           // Packetized metadata (ID3)
           case 0x15:
@@ -4169,7 +4185,10 @@ var TSDemuxer = (function () {
           // ITU-T Rec. H.264 and ISO/IEC 14496-10 (lower bit-rate video)
           case 0x1b:
             //logger.log('AVC PID:'  + pid);
-            this._avcTrack.id = pid;
+            if (currentVideoStreamIndex === tsStreamIndex) {
+              this._avcTrack.id = pid;
+            }
+            ++currentVideoStreamIndex;
             break;
           default:
             _utilsLogger.logger.log('unkown stream type:' + data[offset]);
@@ -5411,7 +5430,7 @@ var FragmentLoader = (function (_EventHandler) {
       stats.length = payload.byteLength;
       // detach fragment loader on load success
       this.frag.loader = undefined;
-      this.hls.trigger(_events2['default'].FRAG_LOADED, { payload: payload, frag: this.frag, stats: stats });
+      this.hls.trigger(_events2['default'].FRAG_LOADED, { payload: payload, frag: this.frag, stats: stats, payloadCopy: payload.slice(0) }); //found that payload quickly gets cleared out by internal usage of this event, so added a copy for conveying to other usages
     }
   }, {
     key: 'loaderror',

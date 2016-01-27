@@ -34,7 +34,7 @@ class FragmentLoader extends EventHandler {
     stats.length = payload.byteLength;
     // detach fragment loader on load success
     this.frag.loader = undefined;
-    this.hls.trigger(Event.FRAG_LOADED, {payload: payload, frag: this.frag, stats: stats});
+    this.hls.trigger(Event.FRAG_LOADED, {payload: payload, frag: this.frag, stats: stats, payloadCopy: payload.slice(0)}); //found that payload quickly gets cleared out by internal usage of this event, so added a copy for conveying to other usages
   }
 
   loaderror(event) {

@@ -26,7 +26,7 @@ var DemuxerWorker = function (self) {
         break;
       case 'demux':
         var data = ev.data;
-        self.demuxer.push(new Uint8Array(data.data), data.audioCodec, data.videoCodec, data.timeOffset, data.cc, data.level, data.sn, data.duration);
+        self.demuxer.push(new Uint8Array(data.data), data.audioCodec, data.videoCodec, data.timeOffset, data.cc, data.level, data.sn, data.duration, data.tsStreamIndex);
         break;
       default:
         break;

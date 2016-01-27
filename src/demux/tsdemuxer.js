@@ -53,7 +53,7 @@
   }
 
   // feed incoming data to the front of the parsing pipeline
-  push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration) {
+  push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration, tsStreamIndex) {
     var avcData, aacData, id3Data,
         start, len = data.length, stt, pid, atf, offset;
     this.audioCodec = audioCodec;
@@ -142,7 +142,7 @@
           if (pid === 0) {
             this._parsePAT(data, offset);
           } else if (pid === this._pmtId) {
-            this._parsePMT(data, offset);
+            this._parsePMT(data, offset, tsStreamIndex);
             pmtParsed = this.pmtParsed = true;
             avcId = this._avcTrack.id;
             aacId = this._aacTrack.id;
@@ -182,8 +182,15 @@
     //logger.log('PMT PID:'  + this._pmtId);
   }
 
-  _parsePMT(data, offset) {
+  /*
+   * Enhanced to parse out a given tsStreamIndex for the special case where a ts fragment may contain multiple streams.
+   * The out-of-the-box behavior assumed a single stream, so if there were multiple then it went with the last one found.
+   * Now it keeps count of the streams encountered and will extract only the one desired.
+   * This is done based on the tsStreamIndex configuration provided to the Hls instance upon construction. If not supplied, it defaults to 0.
+   */
+  _parsePMT(data, offset, tsStreamIndex=0) {
     var sectionLength, tableEnd, programInfoLength, pid;
+    var currentVideoStreamIndex = 0, currentAudioStreamIndex = 0;
     sectionLength = (data[offset + 1] & 0x0f) << 8 | data[offset + 2];
     tableEnd = offset + 3 + sectionLength - 4;
     // to determine where the table is, we have to figure out how
@@ -197,7 +204,10 @@
         // ISO/IEC 13818-7 ADTS AAC (MPEG-2 lower bit-rate audio)
         case 0x0f:
           //logger.log('AAC PID:'  + pid);
-          this._aacTrack.id = pid;
+          if (currentAudioStreamIndex === tsStreamIndex) {
+            this._aacTrack.id = pid;
+          }
+          ++currentAudioStreamIndex;
           break;
         // Packetized metadata (ID3)
         case 0x15:
@@ -207,7 +217,10 @@
         // ITU-T Rec. H.264 and ISO/IEC 14496-10 (lower bit-rate video)
         case 0x1b:
           //logger.log('AVC PID:'  + pid);
-          this._avcTrack.id = pid;
+          if (currentVideoStreamIndex === tsStreamIndex) {
+            this._avcTrack.id = pid;
+          }
+          ++currentVideoStreamIndex;
           break;
         default:
         logger.log('unkown stream type:'  + data[offset]);

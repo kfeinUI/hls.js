@@ -212,6 +212,7 @@ configuration parameters could be provided to hls.js upon instantiation of Hls O
       abrController : customAbrController,
       timelineController: TimelineController,
       enableCEA708Captions: true
+      tsStreamIndex: 0
     };
 
 
@@ -420,6 +421,13 @@ parameter should be a class a destroy() method:
 whether or not to enable CEA-708 captions
 
 parameter should be a boolean
+
+ ### ```tsStreamIndex```
+(default : 0)
+
+If the MPEG-TS fragments contain multiple video streams, you may use this specify which of those you would like to extract.
+
+parameter should be an integer corresponding to the index in which the stream you desire to render is sequenced in the MPEG-TS fragments.
 
 ## Video Binding/Unbinding API
 

@@ -21,7 +21,7 @@ class DemuxerInline {
     }
   }
 
-  push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration) {
+  push(data, audioCodec, videoCodec, timeOffset, cc, level, sn, duration, tsStreamIndex) {
     var demuxer = this.demuxer;
     if (!demuxer) {
       // probe for content type
@@ -34,7 +34,7 @@ class DemuxerInline {
         return;
       }
     }
-    demuxer.push(data,audioCodec,videoCodec,timeOffset,cc,level,sn,duration);
+    demuxer.push(data,audioCodec,videoCodec,timeOffset,cc,level,sn,duration,tsStreamIndex);
   }
 }
 

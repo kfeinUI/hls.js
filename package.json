@@ -23,8 +23,8 @@
     "pretest": "npm run lint",
     "test": "mocha --compilers js:babel/register --recursive tests/unit",
     "lint": "jshint src/",
-    "serve": "http-server -p 8000 .",
-    "open": "opener http://localhost:8000/demo/",
+    "serve": "http-server -p 9000 .",
+    "open": "opener http://localhost:9000/demo/",
     "live-reload": "live-reload --port 8001 dist/",
     "dev": "npm run open -s & parallelshell 'npm run live-reload -s' 'npm run serve -s' 'npm run watch -s'"
   },
